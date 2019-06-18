@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.nn.utils.rnn as rnn_utils
 from utils import to_var
 
+
 class SentenceVAE(nn.Module):
 
     def __init__(self, vocab_size, embedding_size, rnn_type, hidden_size, word_dropout, embedding_dropout, latent_size,
-                sos_idx, eos_idx, pad_idx, unk_idx, max_sequence_length, num_layers=1, bidirectional=False):
+                 sos_idx, eos_idx, pad_idx, unk_idx, max_sequence_length, num_layers=1, bidirectional=False):
 
         super().__init__()
         self.tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
@@ -37,8 +38,10 @@ class SentenceVAE(nn.Module):
         else:
             raise ValueError()
 
-        self.encoder_rnn = rnn(embedding_size, hidden_size, num_layers=num_layers, bidirectional=self.bidirectional, batch_first=True)
-        self.decoder_rnn = rnn(embedding_size, hidden_size, num_layers=num_layers, bidirectional=self.bidirectional, batch_first=True)
+        self.encoder_rnn = rnn(embedding_size, hidden_size, num_layers=num_layers, bidirectional=self.bidirectional,
+                               batch_first=True)
+        self.decoder_rnn = rnn(embedding_size, hidden_size, num_layers=num_layers, bidirectional=self.bidirectional,
+                               batch_first=True)
 
         self.hidden_factor = (2 if bidirectional else 1) * num_layers
 
@@ -62,7 +65,7 @@ class SentenceVAE(nn.Module):
 
         if self.bidirectional or self.num_layers > 1:
             # flatten hidden state
-            hidden = hidden.view(batch_size, self.hidden_size*self.hidden_factor)
+            hidden = hidden.view(batch_size, self.hidden_size * self.hidden_factor)
         else:
             hidden = hidden.squeeze()
 
@@ -88,7 +91,7 @@ class SentenceVAE(nn.Module):
             # randomly replace decoder input with <unk>
             prob = torch.rand(input_sequence.size())
             if torch.cuda.is_available():
-                prob=prob.cuda()
+                prob = prob.cuda()
             prob[(input_sequence.data - self.sos_idx) * (input_sequence.data - self.pad_idx) == 0] = 1
             decoder_input_sequence = input_sequence.clone()
             decoder_input_sequence[prob < self.word_dropout_rate] = self.unk_idx
@@ -102,17 +105,15 @@ class SentenceVAE(nn.Module):
         # process outputs
         padded_outputs = rnn_utils.pad_packed_sequence(outputs, batch_first=True)[0]
         padded_outputs = padded_outputs.contiguous()
-        _,reversed_idx = torch.sort(sorted_idx)
+        _, reversed_idx = torch.sort(sorted_idx)
         padded_outputs = padded_outputs[reversed_idx]
-        b,s,_ = padded_outputs.size()
+        b, s, _ = padded_outputs.size()
 
         # project outputs to vocab
         logp = nn.functional.log_softmax(self.outputs2vocab(padded_outputs.view(-1, padded_outputs.size(2))), dim=-1)
         logp = logp.view(b, s, self.embedding.num_embeddings)
 
-
         return logp, mean, logv, z
-
 
     def inference(self, n=4, z=None):
 
@@ -131,16 +132,22 @@ class SentenceVAE(nn.Module):
         hidden = hidden.unsqueeze(0)
 
         # required for dynamic stopping of sentence generation
-        sequence_idx = torch.arange(0, batch_size, out=self.tensor()).long() # all idx of batch
-        sequence_running = torch.arange(0, batch_size, out=self.tensor()).long() # all idx of batch which are still generating
+
+        # all idx of batch
+        sequence_idx = torch.arange(0, batch_size, out=self.tensor()).long()
+        # all idx of batch which are still generating
+        sequence_running = torch.arange(0, batch_size,
+                                        out=self.tensor()).long()
         sequence_mask = torch.ones(batch_size, out=self.tensor()).byte()
 
-        running_seqs = torch.arange(0, batch_size, out=self.tensor()).long() # idx of still generating sequences with respect to current loop
+        # idx of still generating sequences with respect to current loop
+        running_seqs = torch.arange(0, batch_size,
+                                    out=self.tensor()).long()
 
         generations = self.tensor(batch_size, self.max_sequence_length).fill_(self.pad_idx).long()
 
-        t=0
-        while(t<self.max_sequence_length and len(running_seqs)>0):
+        t = 0
+        while t < self.max_sequence_length and len(running_seqs) > 0:
 
             if t == 0:
                 input_sequence = to_var(torch.Tensor(batch_size).fill_(self.sos_idx).long())
@@ -177,19 +184,23 @@ class SentenceVAE(nn.Module):
 
         return generations, z
 
-    def _sample(self, dist, mode='greedy'):
+    @staticmethod
+    def _sample(dist, mode='greedy'):
 
         if mode == 'greedy':
             _, sample = torch.topk(dist, 1, dim=-1)
+        else:
+            raise NotImplemented("Not implemented for other modes!")
         sample = sample.squeeze()
 
         return sample
 
-    def _save_sample(self, save_to, sample, running_seqs, t):
+    @staticmethod
+    def _save_sample(save_to, sample, running_seqs, t):
         # select only still running
         running_latest = save_to[running_seqs]
         # update token at position t
-        running_latest[:,t] = sample.data
+        running_latest[:, t] = sample.data
         # save back
         save_to[running_seqs] = running_latest
 

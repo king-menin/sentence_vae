@@ -1,13 +1,13 @@
 import os
 import io
 import json
-import torch
 import numpy as np
 from collections import defaultdict
 from torch.utils.data import Dataset
 from nltk.tokenize import TweetTokenizer
 
 from utils import OrderedCounter
+
 
 class PTB(Dataset):
 
@@ -19,21 +19,21 @@ class PTB(Dataset):
         self.max_sequence_length = kwargs.get('max_sequence_length', 50)
         self.min_occ = kwargs.get('min_occ', 3)
 
-        self.raw_data_path = os.path.join(data_dir, 'ptb.'+split+'.txt')
-        self.data_file = 'ptb.'+split+'.json'
+        self.raw_data_path = os.path.join(data_dir, 'ptb.' + split + '.txt')
+        self.data_file = 'ptb.' + split + '.json'
         self.vocab_file = 'ptb.vocab.json'
 
         if create_data:
-            print("Creating new %s ptb data."%split.upper())
+            print("Creating new %s ptb data." % split.upper())
             self._create_data()
 
         elif not os.path.exists(os.path.join(self.data_dir, self.data_file)):
-            print("%s preprocessed file not found at %s. Creating new."%(split.upper(), os.path.join(self.data_dir, self.data_file)))
+            print("%s preprocessed file not found at %s. Creating new." % (
+                split.upper(), os.path.join(self.data_dir, self.data_file)))
             self._create_data()
 
         else:
             self._load_data()
-
 
     def __len__(self):
         return len(self.data)
@@ -73,7 +73,6 @@ class PTB(Dataset):
     def get_i2w(self):
         return self.i2w
 
-
     def _load_data(self, vocab=True):
 
         with open(os.path.join(self.data_dir, self.data_file), 'r') as file:
@@ -102,28 +101,27 @@ class PTB(Dataset):
         with open(self.raw_data_path, 'r') as file:
 
             for i, line in enumerate(file):
-
                 words = tokenizer.tokenize(line)
 
-                input = ['<sos>'] + words
-                input = input[:self.max_sequence_length]
+                input_ = ['<sos>'] + words
+                input_ = input_[:self.max_sequence_length]
 
-                target = words[:self.max_sequence_length-1]
+                target = words[:self.max_sequence_length - 1]
                 target = target + ['<eos>']
 
-                assert len(input) == len(target), "%i, %i"%(len(input), len(target))
-                length = len(input)
+                assert len(input_) == len(target), "%i, %i" % (len(input_), len(target))
+                length = len(input_)
 
-                input.extend(['<pad>'] * (self.max_sequence_length-length))
-                target.extend(['<pad>'] * (self.max_sequence_length-length))
+                input_.extend(['<pad>'] * (self.max_sequence_length - length))
+                target.extend(['<pad>'] * (self.max_sequence_length - length))
 
-                input = [self.w2i.get(w, self.w2i['<unk>']) for w in input]
+                input_ = [self.w2i.get(w, self.w2i['<unk>']) for w in input_]
                 target = [self.w2i.get(w, self.w2i['<unk>']) for w in target]
 
-                id = len(data)
-                data[id]['input'] = input
-                data[id]['target'] = target
-                data[id]['length'] = length
+                id_ = len(data)
+                data[id_]['input'] = input_
+                data[id_]['target'] = target
+                data[id_]['length'] = length
 
         with io.open(os.path.join(self.data_dir, self.data_file), 'wb') as data_file:
             data = json.dumps(data, ensure_ascii=False)
@@ -159,7 +157,7 @@ class PTB(Dataset):
 
         assert len(w2i) == len(i2w)
 
-        print("Vocablurary of %i keys created." %len(w2i))
+        print("Vocablulary of %i keys created." % len(w2i))
 
         vocab = dict(w2i=w2i, i2w=i2w)
         with io.open(os.path.join(self.data_dir, self.vocab_file), 'wb') as vocab_file:
