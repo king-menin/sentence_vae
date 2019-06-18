@@ -4,7 +4,7 @@ import json
 import numpy as np
 from collections import defaultdict
 from torch.utils.data import Dataset
-from nltk.tokenize import TweetTokenizer
+from nltk.tokenize.toktok import ToktokTokenizer
 
 from utils import OrderedCounter
 
@@ -19,9 +19,9 @@ class PTB(Dataset):
         self.max_sequence_length = kwargs.get('max_sequence_length', 50)
         self.min_occ = kwargs.get('min_occ', 3)
 
-        self.raw_data_path = os.path.join(data_dir, 'ptb.' + split + '.txt')
-        self.data_file = 'ptb.' + split + '.json'
-        self.vocab_file = 'ptb.vocab.json'
+        self.raw_data_path = os.path.join(data_dir, split + '.txt')
+        self.data_file = split + '.json'
+        self.vocab_file = 'vocab.json'
 
         if create_data:
             print("Creating new %s ptb data." % split.upper())
@@ -95,7 +95,7 @@ class PTB(Dataset):
         else:
             self._load_vocab()
 
-        tokenizer = TweetTokenizer(preserve_case=False)
+        tokenizer = ToktokTokenizer()
 
         data = defaultdict(dict)
         with open(self.raw_data_path, 'r') as file:
@@ -131,9 +131,9 @@ class PTB(Dataset):
 
     def _create_vocab(self):
 
-        assert self.split == 'train', "Vocablurary can only be created for training file."
+        assert self.split == 'train', "Vocabulary can only be created for training file."
 
-        tokenizer = TweetTokenizer(preserve_case=False)
+        tokenizer = ToktokTokenizer()
 
         w2c = OrderedCounter()
         w2i = dict()
@@ -157,7 +157,7 @@ class PTB(Dataset):
 
         assert len(w2i) == len(i2w)
 
-        print("Vocablulary of %i keys created." % len(w2i))
+        print("Vocabulary of %i keys created." % len(w2i))
 
         vocab = dict(w2i=w2i, i2w=i2w)
         with io.open(os.path.join(self.data_dir, self.vocab_file), 'wb') as vocab_file:
