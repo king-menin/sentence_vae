@@ -5,4 +5,4 @@ wget http://dumps.wikimedia.org/ruwiki/latest/ruwiki-latest-pages-articles.xml.b
 cd ../
 git clone https://github.com/attardi/wikiextractor.git
 cd wikiextractor
-python3 WikiExtractor.py -o ../data/wiki/ --no_templates --processes 8 ../ru_data/ruwiki-latest-pages-articles.xml.bz2
+python3 WikiExtractor.py -o ../ru_data/wiki/ --no_templates --processes 8 ../ru_data/ruwiki-latest-pages-articles.xml.bz2

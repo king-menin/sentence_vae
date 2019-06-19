@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from collections import OrderedDict, defaultdict
 
 from ptb import PTB
-from utils import to_var, idx2word, expierment_name
+from utils import to_var, idx2word, experiment_name
 from model import SentenceVAE
 
 
@@ -52,7 +52,7 @@ def main(args):
     print(model)
 
     if args.tensorboard_logging:
-        writer = SummaryWriter(os.path.join(args.logdir, expierment_name(args, ts)))
+        writer = SummaryWriter(os.path.join(args.logdir, experiment_name(args, ts)))
         writer.add_text("model", str(model))
         writer.add_text("args", str(args))
         writer.add_text("ts", ts)
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('--create_data', action='store_true')
     parser.add_argument('--max_sequence_length', type=int, default=60)
     parser.add_argument('--min_occ', type=int, default=1)
-    parser.add_argument('--test', action='store_true')
+    # parser.add_argument('--test', action='store_true')
 
     parser.add_argument('-ep', '--epochs', type=int, default=10)
     parser.add_argument('-bs', '--batch_size', type=int, default=32)
@@ -195,9 +195,9 @@ if __name__ == '__main__':
     parser.add_argument('-eb', '--embedding_size', type=int, default=300)
     parser.add_argument('-rnn', '--rnn_type', type=str, default='gru')
     parser.add_argument('-hs', '--hidden_size', type=int, default=256)
-    parser.add_argument('-nl', '--num_layers', type=int, default=1)
+    parser.add_argument('-nl', '--num_layers', type=int, default=3)
     parser.add_argument('-bi', '--bidirectional', action='store_true')
-    parser.add_argument('-ls', '--latent_size', type=int, default=16)
+    parser.add_argument('-ls', '--latent_size', type=int, default=62)
     parser.add_argument('-wd', '--word_dropout', type=float, default=0)
     parser.add_argument('-ed', '--embedding_dropout', type=float, default=0.5)
 

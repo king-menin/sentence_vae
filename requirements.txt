@@ -1,3 +1,8 @@
+bson
+pandas
+scikit-learn
+tqdm
+rusenttokenize
 numpy==1.14.5
 nltk==3.3
 torch==0.3.1
