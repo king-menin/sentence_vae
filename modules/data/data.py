@@ -128,7 +128,7 @@ class TextDataSet(object):
                 tok_map.append(len(bert_tokens))
                 bert_tokens.extend(cur_tokens)
 
-            orig_tokens = ["[CLS]"] + orig_tokens
+            orig_tokens = ["[CLS]"] + orig_tokens + ["[SEP]"]
 
             input_ids = self.tokenizer.convert_tokens_to_ids(bert_tokens)
 
