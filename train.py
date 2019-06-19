@@ -8,33 +8,27 @@ from multiprocessing import cpu_count
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 from collections import OrderedDict, defaultdict
-
-from ptb import PTB
+# from ptb import PTB
 from utils import to_var, idx2word, experiment_name
 from modules.models.model import SentenceVAE
+from modules.data import LearnData
 
 
 def main(args):
     ts = time.strftime('%Y-%b-%d-%H:%M:%S', time.gmtime())
-
-    splits = ['train', 'valid'] + (['test'] if args.test else [])
-
-    datasets = OrderedDict()
-    for split in splits:
-        datasets[split] = PTB(
-            data_dir=args.data_dir,
-            split=split,
-            create_data=args.create_data,
-            max_sequence_length=args.max_sequence_length,
-            min_occ=args.min_occ
-        )
+    data = LearnData.create(
+        train_df_path=args.train_df_path,
+        valid_df_path=args.valid_df_path,
+        min_char_len=args.min_char_len,
+        model_name=args.model_name,
+        max_sequence_length=args.max_sequence_length,
+        pad_idx=args.pad_idx,
+        clear_cache=False,
+        # DataLoader params
+        device="cuda"
+    )
 
     model = SentenceVAE(
-        vocab_size=datasets['train'].vocab_size,
-        sos_idx=datasets['train'].sos_idx,
-        eos_idx=datasets['train'].eos_idx,
-        pad_idx=datasets['train'].pad_idx,
-        unk_idx=datasets['train'].unk_idx,
         max_sequence_length=args.max_sequence_length,
         embedding_size=args.embedding_size,
         rnn_type=args.rnn_type,
@@ -66,7 +60,7 @@ def main(args):
         elif anneal_function == 'linear':
             return min(1, step / x0)
 
-    NLL = torch.nn.NLLLoss(size_average=False, ignore_index=datasets['train'].pad_idx)
+    NLL = torch.nn.NLLLoss(size_average=False, ignore_index=args.pad_idx)
 
     def loss_fn(logp, target, length, mean, logv, anneal_function, step, k, x0):
 
@@ -89,15 +83,7 @@ def main(args):
     step = 0
     for epoch in range(args.epochs):
 
-        for split in splits:
-
-            data_loader = DataLoader(
-                dataset=datasets[split],
-                batch_size=args.batch_size,
-                shuffle=split == 'train',
-                num_workers=cpu_count(),
-                pin_memory=torch.cuda.is_available()
-            )
+        for data_loader, split in [(data.train_dl, 'train'), (data.valid_dl, 'valid')]:
 
             tracker = defaultdict(tensor)
 
@@ -121,9 +107,10 @@ def main(args):
                 logp, mean, logv, z = model(batch['input'], batch['length'])
 
                 # loss calculation
-                NLL_loss, KL_loss, KL_weight = loss_fn(logp, batch['target'],
-                                                       batch['length'], mean, logv, args.anneal_function, step, args.k,
-                                                       args.x0)
+                NLL_loss, KL_loss, KL_weight = loss_fn(
+                    logp, batch['target'],
+                    batch['length'], mean, logv, args.anneal_function, step, args.k,
+                    args.x0)
 
                 loss = (NLL_loss + KL_weight * KL_loss) / batch_size
 
@@ -182,7 +169,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_dir', type=str, default='data')
+    parser.add_argument('--data_dir', type=str, default='ru_data/wiki/')
     parser.add_argument('--create_data', action='store_true')
     parser.add_argument('--max_sequence_length', type=int, default=60)
     parser.add_argument('--min_occ', type=int, default=1)
@@ -192,14 +179,14 @@ if __name__ == '__main__':
     parser.add_argument('-bs', '--batch_size', type=int, default=32)
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001)
 
-    parser.add_argument('-eb', '--embedding_size', type=int, default=300)
+    parser.add_argument('-eb', '--embedding_size', type=int, default=768)
     parser.add_argument('-rnn', '--rnn_type', type=str, default='gru')
-    parser.add_argument('-hs', '--hidden_size', type=int, default=256)
+    parser.add_argument('-hs', '--hidden_size', type=int, default=512)
     parser.add_argument('-nl', '--num_layers', type=int, default=3)
     parser.add_argument('-bi', '--bidirectional', action='store_true')
-    parser.add_argument('-ls', '--latent_size', type=int, default=62)
+    parser.add_argument('-ls', '--latent_size', type=int, default=64)
     parser.add_argument('-wd', '--word_dropout', type=float, default=0)
-    parser.add_argument('-ed', '--embedding_dropout', type=float, default=0.5)
+    parser.add_argument('-ed', '--embedding_dropout', type=float, default=0.3)
 
     parser.add_argument('-af', '--anneal_function', type=str, default='logistic')
     parser.add_argument('-k', '--k', type=float, default=0.0025)
@@ -209,6 +196,14 @@ if __name__ == '__main__':
     parser.add_argument('-tb', '--tensorboard_logging', action='store_true')
     parser.add_argument('-log', '--logdir', type=str, default='logs')
     parser.add_argument('-bin', '--save_model_path', type=str, default='bin')
+
+    parser.add_argument("--train_path", type=str, default="ru_data/wiki/train.csv")
+    parser.add_argument("--valid_path", type=str, default="ru_data/wiki/valid.csv")
+    parser.add_argument("--test_size", type=float, default=0.001)
+    parser.add_argument("--min_char_len", type=int, default=1)
+    parser.add_argument("--model_name", type=str, default="bert-base-multilingual-cased")
+    parser.add_argument("--max_sequence_length", type=int, default=424)
+    parser.add_argument("--pad_idx", type=int, default=0)
 
     args = parser.parse_args()
 

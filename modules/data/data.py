@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 from nltk.tokenize.toktok import ToktokTokenizer
 import re
+import os
 
 
 class InputFeature(object):
@@ -81,6 +82,7 @@ class TextDataSet(object):
                pad_idx=0,
                clear_cache=False, df=None):
         tokenizer = BertTokenizer.from_pretrained(model_name)
+        features_path = "{}_features.csv".format(df_path[:-3])
         config = {
             "file_names": file_names,
             "min_char_len": min_char_len,
@@ -88,7 +90,8 @@ class TextDataSet(object):
             "max_sequence_length": max_sequence_length,
             "clear_cache": clear_cache,
             "df_path": df_path,
-            "pad_idx": pad_idx
+            "pad_idx": pad_idx,
+            "features_path": features_path
         }
         if clear_cache:
             df = cls.files2sentences_df(file_names, min_char_len)
@@ -99,15 +102,37 @@ class TextDataSet(object):
 
         self = cls(tokenizer, word_tokenizer=ToktokTokenizer(), df=df, config=config)
         if clear_cache:
+            self.create_features(pad_idx)
+        elif os.path.exists(features_path):
+            self.load_features(features_path)
+        else:
+            self.create_features(pad_idx)
+        if clear_cache:
             self.save()
-        self.load_features(pad_idx)
         return self
+
+    def load_features(self, features_path):
+        features_path = if_none(features_path, self.config["features_path"])
+        df = pd.read_csv(features_path)
+        total = len(df)
+        self.features = []
+        for _, row in tqdm(self.df.iterrows(), total=total, leave=False, desc="load_features"):
+            self.features.append(InputFeature(
+                # Bert data
+                bert_tokens=row.bert_tokens.split(),
+                input_ids=row.input_ids.split(),
+                input_mask=row.input_mask.split(),
+                input_type_ids=row.input_type_ids.split(),
+                # Origin data
+                tokens=row.orig_tokens.split(),
+                tok_map=row.tok_map.split(),
+            ))
 
     def load(self, df_path=None):
         df_path = if_none(df_path, self.config["df_path"])
         self.df = pd.read_csv(df_path)
 
-    def load_features(self, pad_idx=None):
+    def create_features(self, pad_idx=None):
         pad_idx = if_none(pad_idx, self.config["pad_idx"])
         if self.config["df_path"] is None and self.df is None:
             raise ValueError("Should setup df_path or df.")
@@ -117,7 +142,7 @@ class TextDataSet(object):
         self.features = []
         total = len(self.df)
 
-        for _, row in tqdm(self.df.iterrows(), total=total, leave=False):
+        for _, row in tqdm(self.df.iterrows(), total=total, leave=False, desc="create_features"):
             bert_tokens = []
             orig_tokens = self.word_tokenizer.tokenize(row.text)
             tok_map = []
@@ -156,6 +181,30 @@ class TextDataSet(object):
     def save(self, df_path=None):
         df_path = if_none(df_path, self.config["df_path"])
         self.df.to_csv(df_path, sep='\t', index=False)
+        features_path = "{}_features.csv".format(df_path[:-3])
+        bert_tokens = []
+        input_ids = []
+        input_mask = []
+        input_type_ids = []
+        tokens = []
+        tok_map = []
+        total = len(self.features)
+
+        for feature in tqdm(self.features, total=total, leave=False, desc="save_features"):
+            bert_tokens.append(" ".join(list(map(str, feature.bert_tokens))))
+            input_ids.append(" ".join(list(map(str, feature.input_ids))))
+            input_mask.append(" ".join(list(map(str, feature.input_mask))))
+            input_type_ids.append(" ".join(list(map(str, feature.input_type_ids))))
+            tokens.append(" ".join(list(map(str, feature.tokens))))
+            tok_map.append(" ".join(list(map(str, feature.tok_map))))
+
+        pd.DataFrame(
+            {"bert_tokens": bert_tokens,
+             "input_ids": input_ids,
+             "input_mask": input_mask,
+             "input_type_ids": input_type_ids,
+             "tokens": tokens,
+             "tok_map": tok_map}).to_csv(features_path, sep='\t', index=False)
 
     @staticmethod
     def files2sentences_df(paths, min_char_len=1):
@@ -163,7 +212,8 @@ class TextDataSet(object):
         clean = re.compile(r"<.*?>")
         ws_clean = re.compile(r"\s+|\"+")
         res = []
-        for f_name in tqdm(paths):
+        total = len(paths)
+        for f_name in tqdm(paths, total=total, leave=False, desc="files2sentences_df"):
             with open(f_name, "r", encoding="utf-8") as f:
                 text = " ".join([x.strip() for x in f.readlines()[2:-1] if len(x.strip())])
                 text = clean.sub(" ", text)
@@ -210,24 +260,25 @@ class LearnData(object):
         train_dl = None
         valid_ds = None
         valid_dl = None
-        if train_file_names is not None and train_df_path is not None:
+        if train_df_path is not None:
             train_ds = TextDataSet.create(
-                train_file_names,
-                train_df_path,
-                min_char_len=1,
-                model_name=model_name,
-                max_sequence_length=max_sequence_length,
-                pad_idx=0, clear_cache=clear_cache)
-            train_dl = DataLoader(train_ds.features, device, **kwargs)
-        if valid_file_names is not None and valid_df_path is not None:
-            valid_ds = TextDataSet.create(
                 train_file_names,
                 train_df_path,
                 min_char_len=min_char_len,
                 model_name=model_name,
                 max_sequence_length=max_sequence_length,
                 pad_idx=pad_idx, clear_cache=clear_cache)
+            train_dl = DataLoader(train_ds.features, device, **kwargs)
+        if valid_df_path is not None:
+            valid_ds = TextDataSet.create(
+                valid_file_names,
+                train_df_path,
+                min_char_len=min_char_len,
+                model_name=model_name,
+                max_sequence_length=max_sequence_length,
+                pad_idx=pad_idx, clear_cache=clear_cache)
             valid_dl = DataLoader(valid_ds.features, device, **kwargs)
+
         return cls(train_ds, train_dl, valid_ds, valid_dl)
 
     def load(self):

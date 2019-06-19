@@ -1,3 +1,3 @@
-from .data import TextDataSet, TextDataLoader, InputFeature
+from .data import TextDataSet, TextDataLoader, InputFeature, LearnData
 
-__all__ = ["TextDataSet", "TextDataLoader", "InputFeature"]
+__all__ = ["TextDataSet", "TextDataLoader", "InputFeature", "LearnData"]
