@@ -155,7 +155,7 @@ class TextDataSet(object):
 
     def save(self, df_path=None):
         df_path = if_none(df_path, self.config["df_path"])
-        self.df.to_csv(df_path)
+        self.df.to_csv(df_path, sep='\t', index=False)
 
     @staticmethod
     def files2sentences_df(paths, min_char_len=1):
