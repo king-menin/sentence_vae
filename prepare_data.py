@@ -9,8 +9,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--data_dir", type=str, default="ru_data/wiki/")
-    parser.add_argument("--train_path", type=str, default="ru_data/wiki/train.csv/")
-    parser.add_argument("--valid_path", type=str, default="ru_data/wiki/valid.csv/")
+    parser.add_argument("--train_path", type=str, default="ru_data/wiki/train.csv")
+    parser.add_argument("--valid_path", type=str, default="ru_data/wiki/valid.csv")
     parser.add_argument("--test_size", type=float, default=0.001)
     parser.add_argument("--min_char_len", type=int, default=1)
     parser.add_argument("--model_name", type=str, default="bert-base-multilingual-cased")

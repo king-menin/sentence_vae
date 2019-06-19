@@ -6,6 +6,7 @@ from utils import read_config, if_none
 from tqdm import tqdm
 import pandas as pd
 from nltk.tokenize.toktok import ToktokTokenizer
+import re
 
 
 class InputFeature(object):
@@ -158,10 +159,15 @@ class TextDataSet(object):
 
     @staticmethod
     def files2sentences_df(paths, min_char_len=1):
+        # remove tags
+        clean = re.compile(r"<.*?>")
+        ws_clean = re.compile(r"\s+")
         res = []
         for f_name in tqdm(paths):
             with open(f_name, "r", encoding="utf-8") as f:
                 text = " ".join([x.strip() for x in f.readlines()[2:-1] if len(x.strip())])
+                text = clean.sub(" ", text).replace('"""', " ")
+                text = ws_clean.sub(" ", text)
                 if len(text):
                     for sent in ru_sent_tokenize(text):
                         if len(sent) > min_char_len:
