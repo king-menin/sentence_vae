@@ -1,12 +1,11 @@
-from pytorch_pretrained_bert import BertTokenizer, BertModel
+from pytorch_pretrained_bert import BertModel
 import torch
 
 
 class BertEmbedder(torch.nn.Module):
     def __init__(self, model_name='bert-base-multilingual-cased', output_all_encoded_layers=False):
         super(BertEmbedder, self).__init__()
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
-        self.model = BertModel.from_pretrained('bert-base-multilingual-cased')
+        self.model = BertModel.from_pretrained(model_name)
         self.model.eval()
         self.output_all_encoded_layers = output_all_encoded_layers
         self.model_name = model_name

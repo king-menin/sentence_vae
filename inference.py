@@ -3,7 +3,7 @@ import json
 import torch
 import argparse
 
-from model import SentenceVAE
+from modules.models.model import SentenceVAE
 from utils import to_var, idx2word, interpolate
 
 

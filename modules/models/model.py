@@ -2,14 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnn_utils
 from utils import to_var
+from modules.layers.bert import BertEmbedder
 
 
 class SentenceVAE(nn.Module):
 
-    def __init__(self, vocab_size, embedding_size, rnn_type, hidden_size, word_dropout, embedding_dropout, latent_size,
-                 sos_idx, eos_idx, pad_idx, unk_idx, max_sequence_length, num_layers=1, bidirectional=False):
+    def __init__(
+            self, vocab_size=119547, embedding_size=768, rnn_type="gru", hidden_size=512, word_dropout=0.01,
+            embedding_dropout=0.4, latent_size=64,
+            sos_idx=101, eos_idx=102, pad_idx=0, unk_idx=100, max_sequence_length=424, num_layers=1, bidirectional=False):
 
-        super().__init__()
+        super(SentenceVAE, self).__init__()
         self.tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
 
         self.max_sequence_length = max_sequence_length
@@ -25,7 +28,7 @@ class SentenceVAE(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
 
-        self.embedding = nn.Embedding(vocab_size, embedding_size)
+        self.embedding = BertEmbedder()
         self.word_dropout_rate = word_dropout
         self.embedding_dropout = nn.Dropout(p=embedding_dropout)
 
@@ -50,14 +53,20 @@ class SentenceVAE(nn.Module):
         self.latent2hidden = nn.Linear(latent_size, hidden_size * self.hidden_factor)
         self.outputs2vocab = nn.Linear(hidden_size * (2 if bidirectional else 1), vocab_size)
 
-    def forward(self, input_sequence, length):
-
-        batch_size = input_sequence.size(0)
-        sorted_lengths, sorted_idx = torch.sort(length, descending=True)
-        input_sequence = input_sequence[sorted_idx]
+    def forward(self, batch):
+        """
+        batch has the following structure.
+            batch[0]: tokens ids
+            batch[1]: tokens mask
+            batch[2]: tokens type ids
+        """
 
         # ENCODER
-        input_embedding = self.embedding(input_sequence)
+        input_embedding = self.embedding(batch)
+        batch_size = input_embedding.size(0)
+        length = batch[1].sum(-1)
+        sorted_lengths, sorted_idx = torch.sort(length, descending=True)
+        input_embedding = input_embedding[sorted_idx]
 
         packed_input = rnn_utils.pack_padded_sequence(input_embedding, sorted_lengths.data.tolist(), batch_first=True)
 
@@ -89,11 +98,11 @@ class SentenceVAE(nn.Module):
         # decoder input
         if self.word_dropout_rate > 0:
             # randomly replace decoder input with <unk>
-            prob = torch.rand(input_sequence.size())
+            prob = torch.rand(input_embedding.size())
             if torch.cuda.is_available():
                 prob = prob.cuda()
-            prob[(input_sequence.data - self.sos_idx) * (input_sequence.data - self.pad_idx) == 0] = 1
-            decoder_input_sequence = input_sequence.clone()
+            prob[(input_embedding.data - self.sos_idx) * (input_embedding.data - self.pad_idx) == 0] = 1
+            decoder_input_sequence = input_embedding.clone()
             decoder_input_sequence[prob < self.word_dropout_rate] = self.unk_idx
             input_embedding = self.embedding(decoder_input_sequence)
         input_embedding = self.embedding_dropout(input_embedding)
