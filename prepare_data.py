@@ -26,16 +26,16 @@ if __name__ == "__main__":
     file_names = get_files_path_from_dir(args.data_dir)
     train_files, valid_files = train_test_split(file_names, test_size=args.test_size)
     train_ds = TextDataSet.create(
-        train_files,
         args.train_path,
+        train_files,
         min_char_len=args.min_char_len,
         model_name=args.model_name,
         max_sequence_length=args.max_sequence_length,
         pad_idx=args.pad_idx,
         clear_cache=True)
     valid_ds = TextDataSet.create(
-        valid_files,
         args.valid_path,
+        valid_files,
         min_char_len=args.min_char_len,
         model_name=args.model_name,
         max_sequence_length=args.max_sequence_length,
