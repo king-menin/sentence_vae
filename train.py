@@ -1,14 +1,11 @@
 import os
-import json
 import time
 import torch
 import argparse
 import numpy as np
-from tensorboardX import SummaryWriter
-from collections import defaultdict
-from utils import to_var, experiment_name
 from modules.models.model import SentenceVAE
 from modules.data import LearnData
+from tqdm import tqdm
 
 
 def main(args):
@@ -42,55 +39,46 @@ def main(args):
 
     print(model)
 
-    if args.tensorboard_logging:
-        writer = SummaryWriter(os.path.join(args.logdir, experiment_name(args, ts)))
-        writer.add_text("model", str(model))
-        writer.add_text("args", str(args))
-        writer.add_text("ts", ts)
-
     save_model_path = os.path.join(args.save_model_path, ts)
     os.makedirs(save_model_path)
 
-    def kl_anneal_function(anneal_function, step, k, x0):
+    def kl_anneal_function(anneal_function, step_, k, x0):
         if anneal_function == 'logistic':
-            return float(1 / (1 + np.exp(-k * (step - x0))))
+            return float(1 / (1 + np.exp(-k * (step_ - x0))))
         elif anneal_function == 'linear':
-            return min(1, step / x0)
+            return min(1, step_ / x0)
 
     NLL = torch.nn.NLLLoss(size_average=False, ignore_index=args.pad_idx)
 
-    def loss_fn(logp, target, length, mean, logv, anneal_function, step, k, x0):
-
+    def loss_fn(log_p, target, length, mean_, log_v, anneal_function, step_, k, x0):
         # cut-off unnecessary padding from target, and flatten
         target = target[:, :torch.max(length).item()].contiguous().view(-1)
-        logp = logp.view(-1, logp.size(2))
+        log_p = log_p.view(-1, log_p.size(2))
 
         # Negative Log Likelihood
-        NLL_loss = NLL(logp, target)
+        NLL_loss_ = NLL(log_p, target)
 
         # KL Divergence
-        KL_loss = -0.5 * torch.sum(1 + logv - mean.pow(2) - logv.exp())
-        KL_weight = kl_anneal_function(anneal_function, step, k, x0)
+        KL_loss_ = -0.5 * torch.sum(1 + log_v - mean_.pow(2) - log_v.exp())
+        KL_weight_ = kl_anneal_function(anneal_function, step_, k, x0)
 
-        return NLL_loss, KL_loss, KL_weight
+        return NLL_loss_, KL_loss_, KL_weight_
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
     step = 0
     for epoch in range(args.epochs):
-
         for data_loader, split in [(data.train_dl, 'train'), (data.valid_dl, 'valid')]:
-
-            tracker = defaultdict(tensor)
 
             # Enable/Disable Dropout
             if split == 'train':
                 model.train()
             else:
                 model.eval()
-
-            for iteration, batch in enumerate(data_loader):
+            epoch_loss = 0.
+            pr = tqdm(data_loader, total=len(data_loader), leave=False)
+            iteration = 1
+            for iteration, batch in enumerate(pr):
 
                 batch_size = batch[0].size(0)
 
@@ -117,29 +105,18 @@ def main(args):
                     loss.backward()
                     optimizer.step()
                     step += 1
-                # print(tracker['ELBO'], tracker['ELBO'].shape, loss.data.shape)
-                # book keepeing
-                tracker['ELBO'] = torch.cat((tracker['ELBO'], loss.view(1, -1).data))
 
-                if args.tensorboard_logging:
-                    writer.add_scalar("%s/ELBO" % split.upper(), loss.item(), epoch * len(data_loader) + iteration)
-                    writer.add_scalar("%s/NLL Loss" % split.upper(), NLL_loss.item() / batch_size,
-                                      epoch * len(data_loader) + iteration)
-                    writer.add_scalar("%s/KL Loss" % split.upper(), KL_loss.item() / batch_size,
-                                      epoch * len(data_loader) + iteration)
-                    writer.add_scalar("%s/KL Weight" % split.upper(), KL_weight, epoch * len(data_loader) + iteration)
-
-                if iteration % args.print_every == 0 or iteration + 1 == len(data_loader):
-                    print("%s Batch %04d/%i, Loss %9.4f, NLL-Loss %9.4f, KL-Loss %9.4f, KL-Weight %6.3f"
-                          % (
-                          split.upper(), iteration, len(data_loader) - 1, loss.item(), NLL_loss.item() / batch_size,
-                          KL_loss.item() / batch_size, KL_weight))
+                loss = loss.data.cpu().tolist()
+                epoch_loss += loss
+                pr.set_description("{} loss: {}, NLL-Loss: {}, KL_loss_: {}, KL_weight: ".format(
+                    split.upper(),
+                    epoch_loss / iteration,
+                    NLL_loss.data.cpu().tolist() / batch_size,
+                    KL_loss.data.cpu().tolist() / batch_size,
+                    KL_weight))
 
             print(
-                "%s Epoch %02d/%i, Mean ELBO %9.4f" % (split.upper(), epoch, args.epochs, torch.mean(tracker['ELBO'])))
-
-            if args.tensorboard_logging:
-                writer.add_scalar("%s-Epoch/ELBO" % split.upper(), torch.mean(tracker['ELBO']), epoch)
+                "%s Epoch %02d/%i, Mean ELBO %9.4f" % (split.upper(), epoch, args.epochs, epoch_loss / iteration))
 
             # save checkpoint
             if split == 'train':
