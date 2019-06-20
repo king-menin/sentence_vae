@@ -141,14 +141,6 @@ def main(args):
             if args.tensorboard_logging:
                 writer.add_scalar("%s-Epoch/ELBO" % split.upper(), torch.mean(tracker['ELBO']), epoch)
 
-            # save a dump of all sentences and the encoded latent space
-            if split == 'valid':
-                dump = {'target_sents': tracker['target_sents'], 'z': tracker['z'].tolist()}
-                if not os.path.exists(os.path.join('dumps', ts)):
-                    os.makedirs('dumps/' + ts)
-                with open(os.path.join('dumps/' + ts + '/valid_E%i.json' % epoch), 'w') as dump_file:
-                    json.dump(dump, dump_file)
-
             # save checkpoint
             if split == 'train':
                 checkpoint_path = os.path.join(save_model_path, "E%i.pytorch" % epoch)
