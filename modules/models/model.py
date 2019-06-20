@@ -10,7 +10,8 @@ class SentenceVAE(nn.Module):
     def __init__(
             self, vocab_size=119547, embedding_size=768, rnn_type="gru", hidden_size=512, word_dropout=0.01,
             embedding_dropout=0.4, latent_size=64,
-            sos_idx=101, eos_idx=102, pad_idx=0, unk_idx=100, max_sequence_length=424, num_layers=1, bidirectional=False):
+            sos_idx=101, eos_idx=102, pad_idx=0, unk_idx=100, max_sequence_length=424, num_layers=1,
+            bidirectional=True):
 
         super(SentenceVAE, self).__init__()
         self.tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor

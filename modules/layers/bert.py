@@ -9,6 +9,7 @@ class BertEmbedder(torch.nn.Module):
         self.model.eval()
         self.output_all_encoded_layers = output_all_encoded_layers
         self.model_name = model_name
+        self.freeze()
 
     def forward(self, batch):
         """
@@ -24,3 +25,7 @@ class BertEmbedder(torch.nn.Module):
                 attention_mask=batch[1],
                 output_all_encoded_layers=self.output_all_encoded_layers)
         return encoded_layers
+
+    def freeze(self):
+        for param in self.model.parameters():
+            param.requires_grad = False
