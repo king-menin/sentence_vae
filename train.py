@@ -94,9 +94,9 @@ def main(args):
 
                 batch_size = batch[0].size(0)
 
-                for k, v in batch.items():
-                    if torch.is_tensor(v):
-                        batch[k] = to_var(v)
+                # for k, v in batch.items():
+                #     if torch.is_tensor(v):
+                #         batch[k] = to_var(v)
                 # print(batch['input'])
                 # print()
                 # print(batch['length'])
@@ -105,8 +105,8 @@ def main(args):
 
                 # loss calculation
                 NLL_loss, KL_loss, KL_weight = loss_fn(
-                    logp, batch['target'],
-                    batch['length'], mean, logv, args.anneal_function, step, args.k,
+                    logp, batch[0],
+                    batch[1].sum(-1), mean, logv, args.anneal_function, step, args.k,
                     args.x0)
 
                 loss = (NLL_loss + KL_weight * KL_loss) / batch_size
@@ -161,7 +161,6 @@ if __name__ == '__main__':
 
     parser.add_argument('--data_dir', type=str, default='ru_data/wiki/')
     parser.add_argument('--create_data', action='store_true')
-    parser.add_argument('--max_sequence_length', type=int, default=60)
     parser.add_argument('--min_occ', type=int, default=1)
     # parser.add_argument('--test', action='store_true')
 
@@ -187,8 +186,8 @@ if __name__ == '__main__':
     parser.add_argument('-log', '--logdir', type=str, default='logs')
     parser.add_argument('-bin', '--save_model_path', type=str, default='bin')
 
-    parser.add_argument("--train_path", type=str, default="ru_data/wiki/train.csv")
-    parser.add_argument("--valid_path", type=str, default="ru_data/wiki/valid.csv")
+    parser.add_argument("--train_df_path", type=str, default="ru_data/wiki/train.csv")
+    parser.add_argument("--valid_df_path", type=str, default="ru_data/wiki/valid.csv")
     parser.add_argument("--test_size", type=float, default=0.001)
     parser.add_argument("--min_char_len", type=int, default=1)
     parser.add_argument("--model_name", type=str, default="bert-base-multilingual-cased")
