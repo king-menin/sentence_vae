@@ -1,5 +1,7 @@
 from pytorch_pretrained_bert import BertModel
 import torch
+from bpemb import BPEmb
+import numpy as np
 
 
 class BertEmbedder(torch.nn.Module):
@@ -29,3 +31,23 @@ class BertEmbedder(torch.nn.Module):
     def freeze(self):
         for param in self.model.parameters():
             param.requires_grad = False
+
+
+class LowerCasedBPEEmbedder(torch.nn.Module):
+    def __init__(self, lang="ru", dim=300, vs=50000, freeze=False):
+        super(LowerCasedBPEEmbedder, self).__init__()
+        bpemb = BPEmb(lang=lang, dim=dim, vs=vs)
+        np.vstack((bpemb.emb.wv.vectors, np.random.uniform(size=300)))
+        self.model = self.from_pretrained(bpemb.emb.wv.vectors, freeze=freeze)
+
+    def forward(self, batch):
+        return self.model(batch[0])
+
+    @staticmethod
+    def from_pretrained(embeddings, freeze=False):
+        assert len(embeddings.shape) == 2, 'Embeddings parameter is expected to be 2-dimensional'
+        rows, cols = embeddings.shape
+        embedding = torch.nn.Embedding(num_embeddings=rows, embedding_dim=cols)
+        embedding.weight = torch.nn.Parameter(torch.tensor(embeddings))
+        embedding.weight.requires_grad = not freeze
+        return embedding

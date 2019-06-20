@@ -4,17 +4,17 @@ import torch
 import argparse
 import numpy as np
 from modules.models.model import SentenceVAE
-from modules.data import LearnData
+from modules.data import bpe_data
 from tqdm import tqdm
 
 
 def main(args):
     ts = time.strftime('%Y-%b-%d-%H:%M:%S', time.gmtime())
-    data = LearnData.create(
+    data = bpe_data.LearnData.create(
         train_df_path=args.train_df_path,
         valid_df_path=args.valid_df_path,
         min_char_len=args.min_char_len,
-        model_name=args.model_name,
+        lang=args.lang, dim=args.embedding_size, vs=args.vocab_size,
         max_sequence_length=args.max_sequence_length,
         pad_idx=args.pad_idx,
         clear_cache=False,
@@ -23,6 +23,8 @@ def main(args):
     )
 
     model = SentenceVAE(
+        vocab_size=args.vocab_size,
+        sos_idx=1, eos_idx=2, pad_idx=args.pad_idx, unk_idx=0,
         max_sequence_length=args.max_sequence_length,
         embedding_size=args.embedding_size,
         rnn_type=args.rnn_type,
@@ -137,7 +139,8 @@ if __name__ == '__main__':
     parser.add_argument('-bs', '--batch_size', type=int, default=32)
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001)
 
-    parser.add_argument('-eb', '--embedding_size', type=int, default=768)
+    parser.add_argument('-eb', '--embedding_size', type=int, default=300)
+    parser.add_argument('-vocab_size', '--vocab_size', type=int, default=50000)
     parser.add_argument('-rnn', '--rnn_type', type=str, default='gru')
     parser.add_argument('-hs', '--hidden_size', type=int, default=512)
     parser.add_argument('-nl', '--num_layers', type=int, default=3)
@@ -159,9 +162,10 @@ if __name__ == '__main__':
     parser.add_argument("--valid_df_path", type=str, default="ru_data/wiki/valid.csv")
     parser.add_argument("--test_size", type=float, default=0.001)
     parser.add_argument("--min_char_len", type=int, default=1)
-    parser.add_argument("--model_name", type=str, default="bert-base-multilingual-cased")
+    parser.add_argument("--lang", type=str, default="ru")
+
     parser.add_argument("--max_sequence_length", type=int, default=424)
-    parser.add_argument("--pad_idx", type=int, default=0)
+    parser.add_argument("--pad_idx", type=int, default=50001)
 
     args_ = parser.parse_args()
 

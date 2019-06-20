@@ -2,18 +2,21 @@ import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnn_utils
 from utils import to_var
-from modules.layers.bert import BertEmbedder
+from modules.layers.embedders import BertEmbedder, LowerCasedBPEEmbedder
 
 
 class SentenceVAE(nn.Module):
 
     def __init__(
-            self, vocab_size=119547, embedding_size=768, rnn_type="gru", hidden_size=512, word_dropout=0.01,
+            self, embedding_type="bert", vocab_size=119547, embedding_size=768, rnn_type="gru", hidden_size=512, word_dropout=0.01,
             embedding_dropout=0.4, latent_size=64,
             sos_idx=101, eos_idx=102, pad_idx=0, unk_idx=100, max_sequence_length=424, num_layers=1,
             bidirectional=True):
-
         super(SentenceVAE, self).__init__()
+        if embedding_type == "bert":
+            self.embedding = BertEmbedder()
+        else:
+            self.embedding = LowerCasedBPEEmbedder(vs=vocab_size, dim=embedding_size)
         self.tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
 
         self.max_sequence_length = max_sequence_length
@@ -30,7 +33,6 @@ class SentenceVAE(nn.Module):
         self.hidden_size = hidden_size
         self.embedding_size = embedding_size
         self.vocab_size = vocab_size
-        self.embedding = BertEmbedder()
         self.word_dropout_rate = word_dropout
         self.embedding_dropout = nn.Dropout(p=embedding_dropout)
 

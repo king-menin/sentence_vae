@@ -7,7 +7,6 @@ from tqdm import tqdm
 import pandas as pd
 from nltk.tokenize.toktok import ToktokTokenizer
 import re
-import os
 
 
 class InputFeature(object):
@@ -120,7 +119,7 @@ class TextDataSet(object):
 
         orig_tokens = ["[CLS]"] + orig_tokens + ["[SEP]"]
 
-        input_ids = self.tokenizer.convert_tokens_to_ids(bert_tokens)
+        input_ids = self.tokenizer.convert_tokens_to_ids(['[CLS]'] + bert_tokens)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.

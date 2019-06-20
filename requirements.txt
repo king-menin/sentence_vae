@@ -1,3 +1,4 @@
+bpemb
 bson
 pandas
 scikit-learn
