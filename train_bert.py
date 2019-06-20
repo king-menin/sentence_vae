@@ -23,7 +23,6 @@ def main(args):
     )
 
     model = SentenceVAE(
-        embedding_type="bpe",
         max_sequence_length=args.max_sequence_length,
         embedding_size=args.embedding_size,
         rnn_type=args.rnn_type,
