@@ -4,12 +4,9 @@ import time
 import torch
 import argparse
 import numpy as np
-from multiprocessing import cpu_count
 from tensorboardX import SummaryWriter
-from torch.utils.data import DataLoader
-from collections import OrderedDict, defaultdict
-# from ptb import PTB
-from utils import to_var, idx2word, experiment_name
+from collections import defaultdict
+from utils import to_var, experiment_name
 from modules.models.model import SentenceVAE
 from modules.data import LearnData
 
@@ -95,7 +92,7 @@ def main(args):
 
             for iteration, batch in enumerate(data_loader):
 
-                batch_size = batch['input'].size(0)
+                batch_size = batch[0].size(0)
 
                 for k, v in batch.items():
                     if torch.is_tensor(v):
@@ -104,7 +101,7 @@ def main(args):
                 # print()
                 # print(batch['length'])
                 # Forward pass
-                logp, mean, logv, z = model(batch['input'], batch['length'])
+                logp, mean, logv, z = model(batch)
 
                 # loss calculation
                 NLL_loss, KL_loss, KL_weight = loss_fn(
@@ -121,7 +118,7 @@ def main(args):
                     optimizer.step()
                     step += 1
                 # print(tracker['ELBO'], tracker['ELBO'].shape, loss.data.shape)
-                # bookkeepeing
+                # book keepeing
                 tracker['ELBO'] = torch.cat((tracker['ELBO'], loss.view(1, -1).data))
 
                 if args.tensorboard_logging:
@@ -137,13 +134,6 @@ def main(args):
                           % (
                           split.upper(), iteration, len(data_loader) - 1, loss.item(), NLL_loss.item() / batch_size,
                           KL_loss.item() / batch_size, KL_weight))
-
-                if split == 'valid':
-                    if 'target_sents' not in tracker:
-                        tracker['target_sents'] = list()
-                    tracker['target_sents'] += idx2word(batch['target'].data, i2w=datasets['train'].get_i2w(),
-                                                        pad_idx=datasets['train'].pad_idx)
-                    tracker['z'] = torch.cat((tracker['z'], z.data), dim=0)
 
             print(
                 "%s Epoch %02d/%i, Mean ELBO %9.4f" % (split.upper(), epoch, args.epochs, torch.mean(tracker['ELBO'])))
@@ -161,7 +151,7 @@ def main(args):
 
             # save checkpoint
             if split == 'train':
-                checkpoint_path = os.path.join(save_model_path, "E%i.pytorch" % (epoch))
+                checkpoint_path = os.path.join(save_model_path, "E%i.pytorch" % epoch)
                 torch.save(model.state_dict(), checkpoint_path)
                 print("Model saved at %s" % checkpoint_path)
 
@@ -205,13 +195,13 @@ if __name__ == '__main__':
     parser.add_argument("--max_sequence_length", type=int, default=424)
     parser.add_argument("--pad_idx", type=int, default=0)
 
-    args = parser.parse_args()
+    args_ = parser.parse_args()
 
-    args.rnn_type = args.rnn_type.lower()
-    args.anneal_function = args.anneal_function.lower()
+    args_.rnn_type = args_.rnn_type.lower()
+    args_.anneal_function = args_.anneal_function.lower()
 
-    assert args.rnn_type in ['rnn', 'lstm', 'gru']
-    assert args.anneal_function in ['logistic', 'linear']
-    assert 0 <= args.word_dropout <= 1
+    assert args_.rnn_type in ['rnn', 'lstm', 'gru']
+    assert args_.anneal_function in ['logistic', 'linear']
+    assert 0 <= args_.word_dropout <= 1
 
-    main(args)
+    main(args_)
