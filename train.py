@@ -79,7 +79,7 @@ def main(args):
             pr = tqdm(data_loader, total=len(data_loader), leave=False)
             iteration = 1
             for iteration, batch in enumerate(pr):
-
+                iteration += 1
                 batch_size = batch[0].size(0)
 
                 # for k, v in batch.items():
