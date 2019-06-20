@@ -27,7 +27,7 @@ class SentenceVAE(nn.Module):
         self.bidirectional = bidirectional
         self.num_layers = num_layers
         self.hidden_size = hidden_size
-
+        self.embedding_size = embedding_size
         self.embedding = BertEmbedder()
         self.word_dropout_rate = word_dropout
         self.embedding_dropout = nn.Dropout(p=embedding_dropout)
@@ -120,7 +120,7 @@ class SentenceVAE(nn.Module):
 
         # project outputs to vocab
         logp = nn.functional.log_softmax(self.outputs2vocab(padded_outputs.view(-1, padded_outputs.size(2))), dim=-1)
-        logp = logp.view(b, s, self.embedding.num_embeddings)
+        logp = logp.view(b, s, self.embedding_size)
 
         return logp, mean, logv, z
 
