@@ -117,12 +117,12 @@ class TextDataSet(object):
             tok_map.append(len(bpe_tokens))
             bpe_tokens.extend(cur_tokens)
 
-        orig_tokens = ['<s>'] + orig_tokens + ['</s>']
         bpe_tokens = ['<s>'] + bpe_tokens + ['</s>']
         input_ids = []
         for cur_tokens in orig_tokens:
             input_ids.extend(self.tokenizer.encode_ids(cur_tokens))
-
+        input_ids = [self.tokenizer.BOS] + input_ids + [self.tokenizer.EOS]
+        orig_tokens = ['<s>'] + orig_tokens + ['</s>']
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
         input_mask = [1] * len(input_ids)
