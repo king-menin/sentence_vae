@@ -113,7 +113,7 @@ def main(args):
 
                 loss = loss.data.cpu().tolist()
                 epoch_loss += loss
-                pr.set_description("{} loss: {}, NLL-Loss: {}, KL_loss_: {}, KL_weight: ".format(
+                pr.set_description("{} loss: {}, NLL-Loss: {}, KL_loss_: {}, KL_weight: {}".format(
                     split.upper(),
                     epoch_loss / iteration,
                     NLL_loss.data.cpu().tolist() / batch_size,
