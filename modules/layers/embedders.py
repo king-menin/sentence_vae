@@ -34,11 +34,10 @@ class BertEmbedder(torch.nn.Module):
 
 
 class LowerCasedBPEEmbedder(torch.nn.Module):
-    def __init__(self, lang="ru", dim=300, vs=50000, freeze=False):
+    def __init__(self, lang="ru", dim=300, vs=50001, freeze=False):
         super(LowerCasedBPEEmbedder, self).__init__()
         bpemb = BPEmb(lang=lang, dim=dim, vs=vs)
-        np.vstack((bpemb.emb.wv.vectors, np.random.uniform(size=300)))
-        self.model = self.from_pretrained(bpemb.emb.wv.vectors, freeze=freeze)
+        self.model = self.from_pretrained(np.vstack((bpemb.emb.wv.vectors, np.random.uniform(size=300))), freeze=freeze)
 
     def forward(self, batch):
         return self.model(batch[0])

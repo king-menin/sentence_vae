@@ -17,7 +17,6 @@ class SentenceVAE(nn.Module):
             self.embedding = BertEmbedder()
         else:
             self.embedding = LowerCasedBPEEmbedder(vs=vocab_size, dim=embedding_size)
-            vocab_size += 1
         self.tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
 
         self.max_sequence_length = max_sequence_length
