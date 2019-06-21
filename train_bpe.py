@@ -166,7 +166,7 @@ if __name__ == '__main__':
     parser.add_argument("--lang", type=str, default="ru")
 
     parser.add_argument("--max_sequence_length", type=int, default=424)
-    parser.add_argument("--pad_idx", type=int, default=50001)
+    parser.add_argument("--pad_idx", type=int, default=50000)
 
     args_ = parser.parse_args()
 
