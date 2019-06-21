@@ -16,6 +16,7 @@ class SentenceVAE(nn.Module):
         if embedding_type == "bert":
             self.embedding = BertEmbedder()
         else:
+            vocab_size += 1
             self.embedding = LowerCasedBPEEmbedder(vs=vocab_size, dim=embedding_size)
         self.tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.Tensor
 
