@@ -36,6 +36,8 @@ def main(args):
         num_layers=args.num_layers,
         bidirectional=args.bidirectional
     )
+    model.float()
+    model.embedding.float()
 
     if torch.cuda.is_available():
         model = model.cuda()

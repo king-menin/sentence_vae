@@ -109,18 +109,18 @@ class TextDataSet(object):
         bpe_tokens = []
         orig_tokens = self.word_tokenizer.tokenize(row.text)
         tok_map = []
-
+        input_ids = []
         for orig_token in orig_tokens:
             cur_tokens = self.tokenizer.encode(orig_token)
             if self.config["max_sequence_length"] - 1 < len(bpe_tokens) + len(cur_tokens):
                 break
             tok_map.append(len(bpe_tokens))
             bpe_tokens.extend(cur_tokens)
+            for tok in cur_tokens:
+                input_ids.append(self.tokenizer.spm[tok])
 
         bpe_tokens = ['<s>'] + bpe_tokens + ['</s>']
-        input_ids = []
-        for cur_tokens in orig_tokens:
-            input_ids.extend(self.tokenizer.encode_ids(cur_tokens))
+
         input_ids = [self.tokenizer.BOS] + input_ids + [self.tokenizer.EOS]
         orig_tokens = ['<s>'] + orig_tokens + ['</s>']
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
