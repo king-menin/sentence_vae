@@ -112,7 +112,7 @@ class TextDataSet(object):
         input_ids = []
         for orig_token in orig_tokens:
             cur_tokens = self.tokenizer.encode(orig_token)
-            if self.config["max_sequence_length"] - 1 < len(bpe_tokens) + len(cur_tokens):
+            if self.config["max_sequence_length"] - 3 < len(bpe_tokens) + len(cur_tokens):
                 break
             tok_map.append(len(bpe_tokens))
             bpe_tokens.extend(cur_tokens)
