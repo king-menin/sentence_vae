@@ -129,6 +129,42 @@ class SentenceVAE(nn.Module):
 
         return logp, mean, logv, z
 
+    def get_latent(self, batch):
+        """
+        batch has the following structure.
+            batch[0]: tokens ids
+            batch[1]: tokens mask
+            batch[2]: tokens type ids
+        """
+
+        # ENCODER
+        input_embedding = self.embedding(batch)
+        batch_size = input_embedding.size(0)
+        length = batch[1].sum(-1)
+        sorted_lengths, sorted_idx = torch.sort(length, descending=True)
+        input_embedding = input_embedding[sorted_idx]
+
+        packed_input = rnn_utils.pack_padded_sequence(input_embedding, sorted_lengths.data.tolist(), batch_first=True)
+
+        _, hidden = self.encoder_rnn(packed_input)
+
+        if self.bidirectional or self.num_layers > 1:
+            # flatten hidden state
+            hidden = hidden.view(batch_size, self.hidden_size * self.hidden_factor)
+        else:
+            hidden = hidden.squeeze()
+
+        # REPARAMETERIZATION
+        mean = self.hidden2mean(hidden)
+        logv = self.hidden2logv(hidden)
+        std = torch.exp(0.5 * logv)
+
+        z = to_var(torch.randn([batch_size, self.latent_size]))
+        z = z * std + mean
+
+        _, reversed_idx = torch.sort(sorted_idx)
+        return z[reversed_idx]
+
     def inference(self, n=4, z=None):
 
         if z is None:
@@ -219,3 +255,6 @@ class SentenceVAE(nn.Module):
         save_to[running_seqs] = running_latest
 
         return save_to
+
+    def load(self, path):
+        self.load_state_dict(torch.load(path))
