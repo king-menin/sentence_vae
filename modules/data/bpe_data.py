@@ -91,7 +91,7 @@ class TextDataSet(object):
         }
         if clear_cache:
             df = cls.files2sentences_df(file_names, min_char_len)
-        elif df is None:
+        elif df is None and df_path is not None:
             df = pd.read_csv(df_path, sep='\t')
         elif isinstance(df, list):
             df = pd.DataFrame({"text": df})
