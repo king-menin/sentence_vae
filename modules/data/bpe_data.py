@@ -76,8 +76,9 @@ class TextDataSet(object):
                lang="ru", dim=300, vs=50000,
                max_sequence_length=424,
                pad_idx=0,
-               clear_cache=False, df=None):
-        tokenizer = BPEmb(lang=lang, dim=dim, vs=vs)
+               clear_cache=False, df=None, tokenizer=None):
+        if tokenizer is None:
+            tokenizer = BPEmb(lang=lang, dim=dim, vs=vs)
         config = {
             "file_names": file_names,
             "min_char_len": min_char_len,
@@ -151,7 +152,7 @@ class TextDataSet(object):
         return self.create_feature(self.df.iloc[item])
 
     def __len__(self):
-        return len(self.df)
+        return len(self.df) if self.df is not None else 0
 
     def save(self, df_path=None):
         df_path = if_none(df_path, self.config["df_path"])
@@ -207,14 +208,14 @@ class LearnData(object):
         train_dl = None
         valid_ds = None
         valid_dl = None
-        if train_df_path is not None:
-            train_ds = TextDataSet.create(
-                train_df_path,
-                train_file_names,
-                min_char_len=min_char_len,
-                lang=lang, dim=dim, vs=vs,
-                max_sequence_length=max_sequence_length,
-                pad_idx=pad_idx, clear_cache=clear_cache)
+        train_ds = TextDataSet.create(
+            train_df_path,
+            train_file_names,
+            min_char_len=min_char_len,
+            lang=lang, dim=dim, vs=vs,
+            max_sequence_length=max_sequence_length,
+            pad_idx=pad_idx, clear_cache=clear_cache)
+        if len(train_ds):
             train_dl = TextDataLoader(train_ds, device=device, shuffle=True, batch_size=batch_size)
         if valid_df_path is not None:
             valid_ds = TextDataSet.create(
